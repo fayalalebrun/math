@@ -25,8 +25,8 @@ case class FpxxConverter(
     o: FpxxConverter.Options
 ) extends Module {
     val io = new Bundle {
-        val a = slave Flow (Fpxx(o.in_config))
-        val r = master Flow (Fpxx(o.out_config))
+        val a = slave Stream (Fpxx(o.in_config))
+        val r = master Stream (Fpxx(o.out_config))
     }
 
     val n0 = new Node {

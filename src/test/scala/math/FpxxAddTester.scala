@@ -13,13 +13,19 @@ import spinal.core.formal._
 object FpxxAddTester {
 
     case class FpxxAddDut(config: FpxxConfig) extends Component {
-        val op     = slave Flow (Vec(Fpxx(config), 2))
-        val result = master Flow (Fpxx(config))
+        val op     = slave Stream (Vec(Fpxx(config), 2))
+        val result = master Stream (Fpxx(config))
+
+        // Fork the input stream for the adder and equivalence checking
+        val opForked = StreamFork(op, 3, synchronous = true)
 
         val inner = new FpxxAdd(FpxxAdd.Options(config))
-        inner.io.op.valid := op.valid
-        inner.io.op.a     := op.payload(0)
-        inner.io.op.b     := op.payload(1)
+        inner.io.op << opForked(0).translateWith {
+            val bundle = cloneOf(inner.io.op.payload)
+            bundle.a := opForked(0).payload(0)
+            bundle.b := opForked(0).payload(1)
+            bundle
+        }
 
         val addDelay = LatencyAnalysis(inner.io.op.valid, inner.io.result.valid)
 
@@ -32,18 +38,21 @@ object FpxxAddTester {
                   if (addDelay > 2) 1 else 0,
                   true
                 )
-                conv.io.op << op.map(_(i))
+                conv.io.op << opForked(i + 1).map(_(i)).s2mPipe()
                 conv.io.result
             }
 
-            val sum = toFix.reduce { (a, b) =>
-                val next = cloneOf(a)
-                next.valid      := a.valid && b.valid
-                next.number     := (a.number + b.number).truncated
-                next.flags.inf  := a.flags.inf || b.flags.inf
-                next.flags.nan  := a.flags.nan || b.flags.nan
-                next.flags.sign := a.flags.sign || b.flags.sign
-                next
+            // Join the two streams properly using StreamJoin
+            val joined = StreamJoin(toFix(0), toFix(1))
+
+            val sum = joined.translateWith {
+                val bundle = cloneOf(toFix(0).payload)
+                bundle.number := (toFix(0).payload.number + toFix(1).payload.number).truncated
+                bundle.flags.inf := toFix(0).payload.flags.inf || toFix(1).payload.flags.inf
+                bundle.flags.nan := toFix(0).payload.flags.nan || toFix(1).payload.flags.nan
+                bundle.flags.sign := toFix(0).payload.flags.sign || toFix(1).payload.flags.sign
+                bundle.overflow := False
+                bundle
             }
 
             val toFpxx = new AFix2Fpxx(
@@ -54,7 +63,11 @@ object FpxxAddTester {
               true
             )
 
-            toFpxx.io.op.assignAllByName(sum)
+            toFpxx.io.op.translateFrom(sum) { (to, from) =>
+                to.number := from.number
+                to.flags := from.flags
+            }
+            toFpxx.io.result.freeRun()
 
             val fixedDelay = LatencyAnalysis(op.valid, toFpxx.io.result.valid)
 
@@ -85,7 +98,7 @@ class FpxxAddTester extends AnyFunSuite {
         SimConfig.withIVerilog.withWave.noOptimisation
             .compile(BundleDebug.fpxxDebugBits(FpxxAddTester.FpxxAddDut(config)))
             .doSim { dut =>
-                SimTimeout(100000)
+                SimTimeout(1000000)
                 val stimuli = parseHexCases(testfloatGen(Seq("f16_add")), 2, config, config, false)
                     // No denormals
                     .filter { a => !a._2.isDenormal && !a._1.map(_.isDenormal).reduce(_ || _) }
@@ -99,7 +112,7 @@ class FpxxAddTester extends AnyFunSuite {
         SimConfig.withIVerilog.withWave.noOptimisation
             .compile(BundleDebug.fpxxDebugBits(FpxxAddTester.FpxxAddDut(config)))
             .doSim { dut =>
-                SimTimeout(100000)
+                SimTimeout(1000000)
                 val stimuli = parseHexCases(testfloatGen(Seq("f32_add")), 2, config, config, false)
                     // No denormals
                     .filter { a => !a._2.isDenormal && !a._1.map(_.isDenormal).reduce(_ || _) }

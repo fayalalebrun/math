@@ -8,14 +8,14 @@ import spinal.sim._
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
-import spinal.lib.sim.FlowDriver
-import spinal.lib.sim.FlowMonitor
+import spinal.lib.sim.StreamDriver
+import spinal.lib.sim.StreamMonitor
 
 object FpxxMulTester extends AnyFunSuite {
     case class FpxxMulDut(config: FpxxConfig) extends Component {
         val dut = FpxxMul(FpxxMul.Options(cIn = config, pipeStages = 2))
 
-        val op = slave(Flow(Vec(cloneOf(dut.io.input.payload.a), 2)))
+        val op = slave(Stream(Vec(cloneOf(dut.io.input.payload.a), 2)))
         dut.io.input << op.map { payload =>
             val bundle = cloneOf(dut.io.input.payload)
             bundle.a := payload(0)
@@ -38,7 +38,7 @@ class FpxxMulTester extends AnyFunSuite {
         SimConfig.withIVerilog.withWave.noOptimisation
             .compile(BundleDebug.fpxxDebugBits(FpxxMulTester.FpxxMulDut(config)))
             .doSim { dut =>
-                SimTimeout(100000)
+                SimTimeout(1000000)
                 val stimuli = parseHexCases(testLines, 2, config, config, false)
                     // Avoid smallest value since it may involve subnormal rounding
                     .filter { a => !(a._2.mant == 0 && a._2.exp == 1) }
@@ -67,24 +67,31 @@ class FpxxMulTester extends AnyFunSuite {
         val inConfig  = FpxxConfig.float8_e5m2fnuz()
         val outConfig = FpxxConfig.bfloat16()
 
-        SimConfig.withFstWave
+        SimConfig.withIVerilog.withWave
             .compile(BundleDebug.fpxxDebugBits(new Module {
-                val input  = slave Flow (Vec(Fpxx(inConfig), 2))
-                val result = master Flow (Fpxx(outConfig))
+                val input  = slave Stream (Vec(Fpxx(inConfig), 2))
+                val result = master Stream (Fpxx(outConfig))
+
+                // Fork input for both converters
+                val inputForked = StreamFork(input, 2, synchronous = true)
 
                 val aConv = FpxxConverter(FpxxConverter.Options(inConfig, FpxxConfig(8, 2)))
                 val bConv = FpxxConverter(FpxxConverter.Options(inConfig, FpxxConfig(8, 2)))
-                aConv.io.a.payload := input.payload(0)
-                aConv.io.a.valid   := True
-                bConv.io.a.payload := input.payload(1)
-                bConv.io.a.valid   := True
+                aConv.io.a << inputForked(0).map(_(0)).s2mPipe()
+                bConv.io.a << inputForked(1).map(_(1)).s2mPipe()
+
+                // Join the two converter outputs
+                val joined = StreamJoin(aConv.io.r, bConv.io.r)
 
                 val mult = FpxxMul(
                   FpxxMul.Options(FpxxConfig(8, 2), Some(outConfig), pipeStages = 2, rounding = RoundType.FLOOR)
                 )
-                mult.io.input.payload.a := aConv.io.r
-                mult.io.input.payload.b := bConv.io.r
-                mult.io.input.valid     := input.valid
+                mult.io.input << joined.translateWith {
+                    val bundle = cloneOf(mult.io.input.payload)
+                    bundle.a := aConv.io.r.payload
+                    bundle.b := bConv.io.r.payload
+                    bundle
+                }
 
                 mult.io.result >> result
             }))

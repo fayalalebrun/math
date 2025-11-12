@@ -71,7 +71,7 @@ class FpxxDivTester extends AnyFunSuite {
 
         val config = FpxxConfig(8, 23)
 
-        var compiled = SimConfig
+        var compiled = SimConfig.withIVerilog
 //            .withWave
             .compile(new FpxxDivTester.FpxxDivDut(config))
 

@@ -28,11 +28,11 @@ case class FpxxMul(o: FpxxMul.Options) extends Component {
     assert(o.cIn.exp_size == cOutU.exp_size, "Can only handle equal input and output exponents")
 
     val io = new Bundle {
-        val input = slave Flow (new Bundle {
+        val input = slave Stream (new Bundle {
             val a = Fpxx(o.cIn)
             val b = Fpxx(o.cIn)
         })
-        val result = master Flow (Fpxx(cOutU))
+        val result = master Stream (Fpxx(cOutU))
     }
 
     val n0 = new Node {

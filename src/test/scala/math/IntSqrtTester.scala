@@ -35,7 +35,7 @@ class IntSqrtTester extends AnyFunSuite {
         val config = FpxxConfig(8, 23)
 
         var compiled = SimConfig
-            .withWave
+            .withIVerilog.withWave
             .compile(new IntSqrtTester.IntSqrtDut(config))
 
         compiled.doSim { dut =>

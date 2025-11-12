@@ -1,11 +1,11 @@
 
 package math
 
-import spinal.lib.Flow
+import spinal.lib.Stream
 import spinal.core._
 import spinal.core.sim._
-import spinal.lib.sim.FlowDriver
-import spinal.lib.sim.FlowMonitor
+import spinal.lib.sim.StreamDriver
+import spinal.lib.sim.StreamMonitor
 import spinal.core.fiber.Handle
 
 import scala.sys.process._
@@ -161,12 +161,16 @@ object FpxxTesterSupport {
 
     def testOperation[T <: Data](
         stimuli: Iterator[(List[FpxxHost], FpxxHost)],
-        inputs: Flow[T],
-        output: Flow[Fpxx],
+        inputs: Stream[T],
+        output: Stream[Fpxx],
         clockDomain: Handle[ClockDomain]
     ) = {
         val scoreboard = ScoreboardInOrder[FpxxHost]
-        FlowDriver(inputs, clockDomain) { payload =>
+
+        // Drive the output ready signal
+        output.ready #= true
+
+        StreamDriver(inputs, clockDomain) { payload =>
             if (!stimuli.isEmpty) {
                 val (inputs, expected) = stimuli.next()
                 payload match {
@@ -181,9 +185,9 @@ object FpxxTesterSupport {
                 scoreboard.pushRef(expected, inputs)
                 true
             } else false
-        }.setFactor(1f)
+        }
 
-        FlowMonitor(output, clockDomain) { payload =>
+        StreamMonitor(output, clockDomain) { payload =>
             scoreboard.pushDut(payload.toHost())
         }
         clockDomain.forkStimulus(2)

@@ -16,8 +16,8 @@ class Fpxx2AFix(
     assert(intNrBits.value + fracNrBits.value + 2 > c.mant_size, "Not enough bits for SInt size")
 
     val io = new Bundle {
-        val op = slave Flow (Fpxx(c))
-        val result = master Flow (new Bundle {
+        val op = slave Stream (Fpxx(c))
+        val result = master Stream (new Bundle {
             val number   = AFix.SQ(intNrBits, fracNrBits)
             val flags    = generateFlags generate Fpxx.Flags()
             val overflow = Bool()

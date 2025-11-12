@@ -36,9 +36,10 @@ case class FpxxAccum(o: FpxxAdd.Options) extends Component {
     adder.io.op.b.sign := False
     adder.io.op.b.set_zero()
 
-    adder.io.op.valid := False
-    io.op.ready       := False
-    io.result.valid   := False
+    adder.io.op.valid  := False
+    adder.io.result.ready := True
+    io.op.ready        := False
+    io.result.valid    := False
     val fsm = new StateMachine {
         val receive: State = new State with EntryPoint {
             whenIsActive {

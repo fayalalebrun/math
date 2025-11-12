@@ -55,8 +55,8 @@ case class FpxxRSqrt(o: FpxxRSqrt.Options) extends Component {
     val rsqrt_table = Mem(UInt(lutMantBits + 2 bits), initialContent = rsqrtTableContents)
 
     val io = new Bundle {
-        val op     = slave Flow (Fpxx(o.c))
-        val result = master Flow (Fpxx(o.c))
+        val op     = slave Stream (Fpxx(o.c))
+        val result = master Stream (Fpxx(o.c))
     }
 
     val n0 = new Node {

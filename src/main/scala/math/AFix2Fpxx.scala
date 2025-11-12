@@ -16,11 +16,11 @@ class AFix2Fpxx(
     assert(c.ieee_like, "Can only handle IEEE compliant floats")
 
     val io = new Bundle {
-        val op = slave Flow (new Bundle {
+        val op = slave Stream (new Bundle {
             val number = AFix.SQ(intNrBits, fracNrBits)
             val flags  = consumeFlags generate Fpxx.Flags()
         })
-        val result = master Flow (Fpxx(c))
+        val result = master Stream (Fpxx(c))
     }
 
     val opBits = io.op.payload.number.numWidth

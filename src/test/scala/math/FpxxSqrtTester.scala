@@ -67,7 +67,7 @@ class FpxxSqrtTester extends AnyFunSuite {
 
         val config = FpxxConfig(8, 23)
 
-        var compiled = SimConfig
+        var compiled = SimConfig.withIVerilog
 //            .withWave
             .compile(new FpxxSqrtTester.FpxxSqrtDut(config))
 

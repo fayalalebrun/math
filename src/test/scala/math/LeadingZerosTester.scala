@@ -37,7 +37,7 @@ class LeadingZerosTester extends AnyFunSuite {
         var nrInputBits = 23
 
         var compiled = SimConfig
-            .withWave
+            .withIVerilog.withWave
             .compile(new LeadingZerosTester.LeadingZerosDut(nrInputBits))
 
         compiled.doSim { dut =>

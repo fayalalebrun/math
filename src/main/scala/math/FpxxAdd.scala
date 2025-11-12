@@ -29,11 +29,11 @@ class FpxxAdd(o: FpxxAdd.Options) extends Component {
     val preround_size = o.c.mant_size + round_bits
 
     val io = new Bundle {
-        val op = slave Flow (new Bundle {
+        val op = slave Stream (new Bundle {
             val a = Fpxx(o.c)
             val b = Fpxx(o.c)
         })
-        val result = master Flow (Fpxx(o.c))
+        val result = master Stream (Fpxx(o.c))
     }
 
     val n0 = new Node {
@@ -183,11 +183,11 @@ class FpxxAdd(o: FpxxAdd.Options) extends Component {
 class FpxxSub(o: FpxxAdd.Options) extends Component {
 
     val io = new Bundle {
-        val op = slave Flow (new Bundle {
+        val op = slave Stream (new Bundle {
             val a = Fpxx(o.c)
             val b = Fpxx(o.c)
         })
-        val result = master Flow (Fpxx(o.c))
+        val result = master Stream (Fpxx(o.c))
     }
 
     val op_b = Fpxx(o.c)

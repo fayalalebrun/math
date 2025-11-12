@@ -12,7 +12,7 @@ import spinal.lib.sim.StreamReadyRandomizer
 
 class FpxxAccumTester extends AnyFunSuite {
     test("order") {
-        SimConfig.withWave
+        SimConfig.withIVerilog.withWave
             .compile(BundleDebug.fpxxDebugBits(FpxxAccum(FpxxAdd.Options(FpxxConfig.float32(), 1))))
             .doSim { dut =>
                 SimTimeout(1000000)

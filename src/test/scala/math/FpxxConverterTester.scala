@@ -15,7 +15,7 @@ class FpxxConverterTester extends AnyFunSuite {
         outConfig: FpxxConfig,
         testLines: Iterator[String]
     ) {
-        SimConfig.withWave.noOptimisation
+        SimConfig.withIVerilog.withWave.noOptimisation
             .compile(FpxxConverter(FpxxConverter.Options(inConfig, outConfig, pipeStages = List(true, true, true, true))))
             .doSim { dut =>
                 SimTimeout(1000000)
